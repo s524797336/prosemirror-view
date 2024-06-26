@@ -90,7 +90,7 @@ export function storeScrollPos(view: EditorView): {
 }
 
 function scrollStack(dom: Node): {dom: HTMLElement, top: number, left: number}[] {
-  let stack = [], doc = dom.ownerDocument
+  let stack: ReturnType<typeof scrollStack> = [], doc = dom.ownerDocument
   for (let cur: Node | null = dom; cur; cur = parentNode(cur)) {
     stack.push({dom: cur as HTMLElement, top: (cur as HTMLElement).scrollTop, left: (cur as HTMLElement).scrollLeft})
     if (dom == doc) break

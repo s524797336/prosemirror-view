@@ -1,7 +1,8 @@
-import {Node, Mark} from "prosemirror-model"
+import {Node, Mark, Fragment} from "prosemirror-model"
 import {Mappable, Mapping} from "prosemirror-transform"
 import {EditorView} from "./index"
 import {DOMNode} from "./dom"
+import { InternalFragment } from "./internaltypes"
 
 function compareObjs(a: {[prop: string]: any}, b: {[prop: string]: any}) {
   if (a == b) return true
@@ -89,7 +90,7 @@ export class NodeType implements DecorationType {
   }
 
   valid(node: Node, span: Decoration): boolean {
-    let {index, offset} = node.content.findIndex(span.from), child
+    let {index, offset} = (node.content as InternalFragment).findIndex(span.from), child: Node
     return offset == span.from && !(child = node.child(index)).isText && offset + child.nodeSize == span.to
   }
 
@@ -462,7 +463,7 @@ export class DecorationSet implements DecorationSource {
   localsInner(node: Node): readonly Decoration[] {
     if (this == empty) return none
     if (node.inlineContent || !this.local.some(InlineType.is)) return this.local
-    let result = []
+    let result: Decoration[] = []
     for (let i = 0; i < this.local.length; i++) {
       if (!(this.local[i].type instanceof InlineType))
         result.push(this.local[i])
@@ -593,7 +594,7 @@ function mapChildren(
     }
     // Must read oldChildren because children was tagged with -1
     let to = mapping.map((oldChildren[i + 1] as number) + oldOffset, -1), toLocal = to - offset
-    let {index, offset: childOffset} = node.content.findIndex(fromLocal)
+    let {index, offset: childOffset} = (node.content as InternalFragment).findIndex(fromLocal)
     let childNode = node.maybeChild(index)
     if (childNode && childOffset == fromLocal && childOffset + childNode.nodeSize == toLocal) {
       let mapped = (children[i + 2] as DecorationSet)
@@ -633,7 +634,7 @@ function mapChildren(
 
 function moveSpans(spans: Decoration[], offset: number) {
   if (!offset || !spans.length) return spans
-  let result = []
+  let result: Decoration[] = []
   for (let i = 0; i < spans.length; i++) {
     let span = spans[i]
     result.push(new Decoration(span.from + offset, span.to + offset, span.type))
@@ -668,7 +669,7 @@ function mapAndGatherRemainingDecorations(
 
 function takeSpansForNode(spans: (Decoration | null)[], node: Node, offset: number): Decoration[] | null {
   if (node.isLeaf) return null
-  let end = offset + node.nodeSize, found = null
+  let end = offset + node.nodeSize, found: Decoration[] | null = null
   for (let i = 0, span; i < spans.length; i++) {
     if ((span = spans[i]) && span.from > offset && span.to < end) {
       ;(found || (found = [])).push(span)

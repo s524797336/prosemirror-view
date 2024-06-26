@@ -1,16 +1,17 @@
-import {Slice, Fragment, DOMParser, DOMSerializer, ResolvedPos, NodeType, Node} from "prosemirror-model"
+import {Slice, Fragment, DOMParser, DOMSerializer, ResolvedPos, NodeType, Node, Attrs, ParseOptions} from "prosemirror-model"
 import * as browser from "./browser"
 import {EditorView} from "./index"
+import { InternalNodeType } from "./internaltypes"
 
 export function serializeForClipboard(view: EditorView, slice: Slice) {
   view.someProp("transformCopied", f => { slice = f(slice!, view) })
 
-  let context = [], {content, openStart, openEnd} = slice
+  let context: Array<string | null | Attrs> = [], {content, openStart, openEnd} = slice
   while (openStart > 1 && openEnd > 1 && content.childCount == 1 && content.firstChild!.childCount == 1) {
     openStart--
     openEnd--
     let node = content.firstChild!
-    context.push(node.type.name, node.attrs != node.type.defaultAttrs ? node.attrs : null)
+    context.push(node.type.name, node.attrs != (node.type as InternalNodeType).defaultAttrs ? node.attrs : null)
     content = node.content
   }
 
@@ -85,7 +86,7 @@ export function parseFromClipboard(view: EditorView, text: string, html: string 
             dom.parentNode && !inlineParents.test(dom.parentNode.nodeName)) return {ignore: true}
         return null
       }
-    })
+    } as ParseOptions)
   }
   if (sliceData) {
     slice = addContext(closeSlice(slice, +sliceData[1], +sliceData[2]), sliceData[4])

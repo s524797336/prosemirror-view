@@ -1351,9 +1351,9 @@ function preMatch(
   frag: Fragment, parentDesc: ViewDesc
 ): {index: number, matched: Map<ViewDesc, number>, matches: readonly ViewDesc[]} {
   let curDesc = parentDesc, descI = curDesc.children.length
-  let fI = frag.childCount, matched = new Map, matches = []
+  let fI = frag.childCount, matched = new Map, matches: ViewDesc[] = []
   outer: while (fI > 0) {
-    let desc
+    let desc: ViewDesc
     for (;;) {
       if (descI) {
         let next = curDesc.children[descI - 1]
@@ -1408,7 +1408,7 @@ function iterDeco(
     return
   }
 
-  let decoIndex = 0, active = [], restNode = null
+  let decoIndex = 0, active: Decoration[] = [], restNode = null
   for (let parentIndex = 0;;) {
     let widget, widgets
     while (decoIndex < locals.length && locals[decoIndex].to == offset) {
@@ -1508,7 +1508,7 @@ function findTextInFragment(frag: Fragment, text: string, from: number, to: numb
 // right shape in one go, rather than messing with them after
 // creation, but is necessary in the composition hack.
 function replaceNodes(nodes: readonly ViewDesc[], from: number, to: number, view: EditorView, replacement?: ViewDesc) {
-  let result = []
+  let result: ViewDesc[] = []
   for (let i = 0, off = 0; i < nodes.length; i++) {
     let child = nodes[i], start = off, end = off += child.size
     if (start >= to || end <= from) {

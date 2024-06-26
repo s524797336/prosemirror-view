@@ -36,6 +36,9 @@
     "@prosemirror/buildhelper": "^0.1.5",
     "prosemirror-test-builder": "^1.0.0"
   },
+  "overrides": {
+    "prosemirror-view": "file:./src/index.ts"
+  },
   "scripts": {
     "test": "pm-runtests",
     "prepare": "pm-buildhelper src/index.ts"

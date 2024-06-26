@@ -1,10 +1,11 @@
-import {Fragment, DOMParser, TagParseRule, Node, Mark, ResolvedPos} from "prosemirror-model"
+import {Fragment, DOMParser, TagParseRule, Node, Mark, ResolvedPos, ParseOptions} from "prosemirror-model"
 import {Selection, TextSelection} from "prosemirror-state"
 
 import {selectionBetween, selectionFromDOM, selectionToDOM} from "./selection"
 import {selectionCollapsed, keyEvent, DOMNode} from "./dom"
 import * as browser from "./browser"
 import {EditorView} from "./index"
+import { InternalNode } from "./internaltypes"
 
 // Note that all referencing and parsing is done with the
 // start-of-operation selection and document, since that's the one
@@ -36,7 +37,7 @@ function parseBetween(view: EditorView, from_: number, to_: number) {
   let parser = view.someProp("domParser") || DOMParser.fromSchema(view.state.schema)
   let $from = startDoc.resolve(from)
 
-  let sel = null, doc = parser.parse(parent, {
+  let sel: {anchor: number, head: number} | null = null, doc = parser.parse(parent, {
     topNode: $from.parent,
     topMatch: $from.parent.contentMatchAt($from.index()),
     topOpen: true,
@@ -46,7 +47,7 @@ function parseBetween(view: EditorView, from_: number, to_: number) {
     findPositions: find,
     ruleFromNode,
     context: $from
-  })
+  } as ParseOptions)
   if (find && find[0].pos != null) {
     let anchor = find[0].pos, head = find[1] && find[1].pos
     if (head == null) head = anchor
@@ -172,8 +173,9 @@ export function readDOMChange(view: EditorView, from: number, to: number, typeOv
     change.endB--
   }
 
-  let $from = parse.doc.resolveNoCache(change.start - parse.from)
-  let $to = parse.doc.resolveNoCache(change.endB - parse.from)
+  const parsedDoc = parse.doc as InternalNode
+  let $from = parsedDoc.resolveNoCache(change.start - parse.from)
+  let $to = parsedDoc.resolveNoCache(change.endB - parse.from)
   let $fromA = doc.resolve(change.start)
   let inlineChange = $from.sameParent($to) && $from.parent.inlineContent && $fromA.end() >= change.endA
   let nextSel
@@ -181,8 +183,8 @@ export function readDOMChange(view: EditorView, from: number, to: number, typeOv
   // as being an iOS enter press), just dispatch an Enter key instead.
   if (((browser.ios && view.input.lastIOSEnter > Date.now() - 225 &&
         (!inlineChange || addedNodes.some(n => n.nodeName == "DIV" || n.nodeName == "P"))) ||
-       (!inlineChange && $from.pos < parse.doc.content.size && !$from.sameParent($to) &&
-        (nextSel = Selection.findFrom(parse.doc.resolve($from.pos + 1), 1, true)) &&
+       (!inlineChange && $from.pos < parsedDoc.content.size && !$from.sameParent($to) &&
+        (nextSel = Selection.findFrom(parsedDoc.resolve($from.pos + 1), 1, true)) &&
         nextSel.head == $to.pos)) &&
       view.someProp("handleKeyDown", f => f(view, keyEvent(13, "Enter")))) {
     view.input.lastIOSEnter = 0
@@ -213,7 +215,7 @@ export function readDOMChange(view: EditorView, from: number, to: number, typeOv
   if (browser.android && !inlineChange && $from.start() != $to.start() && $to.parentOffset == 0 && $from.depth == $to.depth &&
       parse.sel && parse.sel.anchor == parse.sel.head && parse.sel.head == change.endA) {
     change.endB -= 2
-    $to = parse.doc.resolveNoCache(change.endB - parse.from)
+    $to = parsedDoc.resolveNoCache(change.endB - parse.from)
     setTimeout(() => {
       view.someProp("handleKeyDown", function (f) { return f(view, keyEvent(13, "Enter")); })
     }, 20)
@@ -278,7 +280,7 @@ function resolveSelection(view: EditorView, doc: Node, parsedSel: {anchor: numbe
 // removing or adding a single mark type.
 function isMarkChange(cur: Fragment, prev: Fragment) {
   let curMarks = cur.firstChild!.marks, prevMarks = prev.firstChild!.marks
-  let added = curMarks, removed = prevMarks, type, mark: Mark | undefined, update
+  let added = curMarks, removed = prevMarks, type, mark: Mark | undefined, update: (node: Node) => Node
   for (let i = 0; i < prevMarks.length; i++) added = prevMarks[i].removeFromSet(added)
   for (let i = 0; i < curMarks.length; i++) removed = curMarks[i].removeFromSet(removed)
   if (added.length == 1 && removed.length == 0) {
@@ -292,7 +294,7 @@ function isMarkChange(cur: Fragment, prev: Fragment) {
   } else {
     return null
   }
-  let updated = []
+  let updated: Node[] = []
   for (let i = 0; i < prev.childCount; i++) updated.push(update(prev.child(i)))
   if (Fragment.from(updated).eq(cur)) return {mark, type}
 }
